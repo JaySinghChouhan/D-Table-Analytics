@@ -32,8 +32,8 @@ Full-stack Attendance Management System with live selfie capture, GPS location, 
 ## Project Structure
 
 ```
-├── client/          # React Vite frontend
-└── server/          # Express API
+client/          # React Vite frontend
+server/          # Express API
 ```
 
 ### Prerequisites
