@@ -4,9 +4,7 @@ const logger = require('../utils/logger');
 let memoryServer;
 
 const connectDB = async () => {
-  try {
-    let uri = process.env.MONGODB_URI;
-  console.log(uri);
+  let uri = process.env.MONGODB_URI;
 
   if (process.env.USE_MEMORY_DB === 'true' || uri === 'memory') {
     const { MongoMemoryServer } = require('mongodb-memory-server');
@@ -15,16 +13,17 @@ const connectDB = async () => {
     logger.info('Using in-memory MongoDB for local demo');
   }
 
-  // if (!uri) {
-  //   throw new Error('MONGODB_URI is not defined');
-  // }
-
-  await mongoose.connect(uri);
-  logger.info('MongoDB connected');
-  } catch (error) {
-    console.log(error);
+  if (!uri) {
+    throw new Error('MONGODB_URI is not defined');
   }
-  
+
+  // family: 4 forces IPv4 — required on many Render + Atlas setups
+  await mongoose.connect(uri, {
+    serverSelectionTimeoutMS: 30000,
+    family: 4,
+  });
+
+  logger.info('MongoDB connected');
 };
 
 const stopMemoryDB = async () => {
