@@ -17,19 +17,18 @@ const cleanMongoUri = (raw) => {
   return plainMatch ? plainMatch[0].replace(/[>\]]+$/, '') : uri;
 };
 
-/** Ensure URI targets a DB name. Atlas data for this project lives in `test`. */
-const ensureDbName = (uri) => {
+/** Default DB name matches Compass database: attendance_system */
+const ensureDbName = (uri, dbName = 'attendance_system') => {
   if (!uri || uri === 'memory') return uri;
   try {
     const parsed = new URL(uri);
     if (!parsed.pathname || parsed.pathname === '/') {
-      parsed.pathname = '/test';
+      parsed.pathname = `/${dbName}`;
       return parsed.toString();
     }
   } catch (_) {
-    // mongodb+srv sometimes parsed fine; if not, append /test before query
     if (/mongodb(?:\+srv)?:\/\/[^/]+\/?(\?|$)/.test(uri)) {
-      return uri.replace(/\/?(\?|$)/, '/test$1');
+      return uri.replace(/\/?(\?|$)/, `/${dbName}$1`);
     }
   }
   return uri;
@@ -39,14 +38,19 @@ const startMemoryMongo = async () => {
   const { MongoMemoryServer } = require('mongodb-memory-server');
   memoryServer = await MongoMemoryServer.create();
   usedMemoryFallback = true;
-  const uri = memoryServer.getUri('test');
-  logger.warn('Using in-memory MongoDB fallback (Atlas unreachable)');
+  const uri = memoryServer.getUri('attendance_system');
+  logger.warn('Using in-memory MongoDB (data will NOT appear in Atlas)');
   return uri;
 };
 
 const connectDB = async () => {
   let uri = cleanMongoUri(process.env.MONGODB_URI);
-  uri = ensureDbName(uri);
+  uri = ensureDbName(uri, 'attendance_system');
+
+  const allowMemory =
+    process.env.USE_MEMORY_DB === 'true' ||
+    uri === 'memory' ||
+    process.env.ALLOW_MEMORY_FALLBACK === 'true';
 
   if (process.env.USE_MEMORY_DB === 'true' || uri === 'memory') {
     uri = await startMemoryMongo();
@@ -57,32 +61,36 @@ const connectDB = async () => {
 
   const connectWithUri = async (targetUri) => {
     await mongoose.connect(targetUri, {
-      serverSelectionTimeoutMS: 20000,
-      connectTimeoutMS: 20000,
+      serverSelectionTimeoutMS: 30000,
+      connectTimeoutMS: 30000,
       family: 4,
     });
   };
 
   if (!uri) {
-    logger.error('MONGODB_URI missing — starting memory fallback');
+    throw new Error(
+      'MONGODB_URI is not set on Render. Example: mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/attendance_system'
+    );
+  }
+
+  try {
+    await connectWithUri(uri);
+  } catch (error) {
+    logger.error(`Atlas connection failed: ${error.message}`);
+    if (!allowMemory) {
+      throw new Error(
+        `Cannot reach MongoDB Atlas (${error.message}). In Atlas → Network Access, allow 0.0.0.0/0, then set MONGODB_URI on Render and redeploy.`
+      );
+    }
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect().catch(() => {});
+    }
     uri = await startMemoryMongo();
     await connectWithUri(uri);
-  } else {
-    try {
-      await connectWithUri(uri);
-    } catch (error) {
-      logger.error(`Atlas connection failed: ${error.message}`);
-      // Keep the app usable on Render even if Network Access blocks the cluster
-      if (mongoose.connection.readyState !== 0) {
-        await mongoose.disconnect().catch(() => {});
-      }
-      uri = await startMemoryMongo();
-      await connectWithUri(uri);
-    }
   }
 
   logger.info(
-    `MongoDB connected (readyState=${mongoose.connection.readyState}, memory=${usedMemoryFallback})`
+    `MongoDB connected db=${mongoose.connection.name} host=${mongoose.connection.host} memory=${usedMemoryFallback}`
   );
   return { usedMemoryFallback };
 };

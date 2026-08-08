@@ -61,6 +61,11 @@ app.get('/api/health', (req, res) => {
     message: 'Attendance API is running',
     db: states[readyState] || String(readyState),
     dbReadyState: readyState,
+    dbName: mongoose.connection.name || null,
+    dbHost: mongoose.connection.host || null,
+    memoryDb: Boolean(
+      mongoose.connection.host && String(mongoose.connection.host).includes('127.0.0.1')
+    ),
   });
 });
 
