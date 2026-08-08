@@ -9,6 +9,12 @@
     "dev:client": "npm run dev --prefix client",
     "seed": "npm run seed --prefix server",
     "start:server": "npm start --prefix server",
-    "build:client": "npm run build --prefix client"
+    "build:client": "npm run build --prefix client",
+    "server": "npm start --prefix server",
+    "client": "npm start --prefix client",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.4"
   }
 }

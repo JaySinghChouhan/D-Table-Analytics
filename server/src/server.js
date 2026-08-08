@@ -11,8 +11,8 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
-const PORT = process.env.PORT || 5000;
-
+const PORT = process.env.PORT || 5000; 
+ 
 const start = async () => {
   try {
     await connectDB();
@@ -29,8 +29,8 @@ const start = async () => {
       logger.info(`Server running on port ${PORT}`);
     });
   } catch (error) {
-    logger.error(`Failed to start server: ${error.message}`);
-    process.exit(1);
+    logger.error(`Failed to start server: ${error}`);
+    // process.exit(1);
   }
 };
 
