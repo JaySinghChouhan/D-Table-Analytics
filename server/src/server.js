@@ -25,12 +25,12 @@ const start = async () => {
       await seedDemoUsers();
     }
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       logger.info(`Server running on port ${PORT}`);
     });
   } catch (error) {
     logger.error(`Failed to start server: ${error}`);
-    // process.exit(1);
+    process.exit(1);
   }
 };
 
