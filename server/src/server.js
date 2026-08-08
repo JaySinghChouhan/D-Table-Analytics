@@ -11,16 +11,17 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
-const PORT = process.env.PORT || 5000; 
- 
+const PORT = process.env.PORT || 5000;
+
 const start = async () => {
   try {
-    await connectDB();
+    const connection = await connectDB();
 
     if (
       process.env.AUTO_SEED === 'true' ||
       process.env.USE_MEMORY_DB === 'true' ||
-      process.env.MONGODB_URI === 'memory'
+      process.env.MONGODB_URI === 'memory' ||
+      connection?.usedMemoryFallback
     ) {
       await seedDemoUsers();
     }
