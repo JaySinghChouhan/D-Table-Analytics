@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: d-table-anal
+    name: d-table-analytics-server
     runtime: node
     plan: free
     rootDir: server
@@ -12,6 +12,12 @@ services:
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
-        sync: false
+        generateValue: true
       - key: CLIENT_URL
-        sync: false
+        value: https://d-table-analytics-drog.vercel.app
+      - key: USE_MEMORY_DB
+        value: "false"
+      - key: AUTO_SEED
+        value: "false"
+      - key: ALLOW_MEMORY_FALLBACK
+        value: "false"

@@ -15,14 +15,10 @@ const PORT = process.env.PORT || 5000;
 
 const start = async () => {
   try {
-    const connection = await connectDB();
+    await connectDB();
 
-    if (
-      process.env.AUTO_SEED === 'true' ||
-      process.env.USE_MEMORY_DB === 'true' ||
-      process.env.MONGODB_URI === 'memory' ||
-      connection?.usedMemoryFallback
-    ) {
+    // Demo seed ONLY when explicitly requested (local demo). Never auto-seed on Render.
+    if (process.env.AUTO_SEED === 'true' && process.env.NODE_ENV !== 'production') {
       await seedDemoUsers();
     }
 

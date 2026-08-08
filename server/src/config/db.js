@@ -1,14 +1,10 @@
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 
-let memoryServer;
-let usedMemoryFallback = false;
-
 const cleanMongoUri = (raw) => {
   let uri = String(raw || '').trim();
   if (!uri) return '';
 
-  // Fix accidental markdown paste: [uri](uri)
   const markdownMatch = uri.match(/\((mongodb(?:\+srv)?:\/\/[^)\s]+)\)/i);
   if (markdownMatch) return markdownMatch[1];
 
@@ -17,9 +13,9 @@ const cleanMongoUri = (raw) => {
   return plainMatch ? plainMatch[0].replace(/[>\]]+$/, '') : uri;
 };
 
-/** Default DB name matches Atlas explorer: test */
+/** Always use Atlas DB name `test` when URI has no DB path. */
 const ensureDbName = (uri, dbName = 'test') => {
-  if (!uri || uri === 'memory') return uri;
+  if (!uri) return uri;
   try {
     const parsed = new URL(uri);
     if (!parsed.pathname || parsed.pathname === '/') {
@@ -34,74 +30,46 @@ const ensureDbName = (uri, dbName = 'test') => {
   return uri;
 };
 
-const startMemoryMongo = async () => {
-  const { MongoMemoryServer } = require('mongodb-memory-server');
-  memoryServer = await MongoMemoryServer.create();
-  usedMemoryFallback = true;
-  const uri = memoryServer.getUri('test');
-  logger.warn('Using in-memory MongoDB (data will NOT appear in Atlas)');
-  return uri;
-};
-
 const connectDB = async () => {
   let uri = cleanMongoUri(process.env.MONGODB_URI);
   uri = ensureDbName(uri, 'test');
 
-  const allowMemory =
-    process.env.USE_MEMORY_DB === 'true' ||
-    uri === 'memory' ||
-    process.env.ALLOW_MEMORY_FALLBACK === 'true';
+  if (!uri) {
+    throw new Error(
+      'MONGODB_URI is missing. Set it on Render to your Atlas URI, e.g. mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/test'
+    );
+  }
 
-  if (process.env.USE_MEMORY_DB === 'true' || uri === 'memory') {
-    uri = await startMemoryMongo();
+  // Production must use Atlas only — never silent in-memory DB
+  if (process.env.NODE_ENV === 'production' && (uri === 'memory' || process.env.USE_MEMORY_DB === 'true')) {
+    throw new Error('USE_MEMORY_DB/memory is not allowed in production. Use Atlas MONGODB_URI.');
   }
 
   mongoose.set('bufferTimeoutMS', 30000);
   mongoose.set('strictQuery', true);
 
-  const connectWithUri = async (targetUri) => {
-    await mongoose.connect(targetUri, {
-      serverSelectionTimeoutMS: 30000,
-      connectTimeoutMS: 30000,
-      family: 4,
-    });
+  await mongoose.connect(uri, {
+    serverSelectionTimeoutMS: 30000,
+    connectTimeoutMS: 30000,
+    family: 4,
+  });
+
+  const host = mongoose.connection.host || '';
+  const isAtlas = host.includes('mongodb.net');
+  if (process.env.NODE_ENV === 'production' && !isAtlas) {
+    await mongoose.disconnect().catch(() => {});
+    throw new Error(`Production must connect to Atlas, got host=${host}`);
+  }
+
+  logger.info(`MongoDB connected db=${mongoose.connection.name} host=${host}`);
+  return {
+    usedMemoryFallback: false,
+    dbName: mongoose.connection.name,
+    dbHost: host,
+    isAtlas,
   };
-
-  if (!uri) {
-    throw new Error(
-      'MONGODB_URI is not set on Render. Example: mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/test'
-    );
-  }
-
-  try {
-    await connectWithUri(uri);
-  } catch (error) {
-    logger.error(`Atlas connection failed: ${error.message}`);
-    if (!allowMemory) {
-      throw new Error(
-        `Cannot reach MongoDB Atlas (${error.message}). In Atlas → Network Access, allow 0.0.0.0/0, then set MONGODB_URI on Render and redeploy.`
-      );
-    }
-    if (mongoose.connection.readyState !== 0) {
-      await mongoose.disconnect().catch(() => {});
-    }
-    uri = await startMemoryMongo();
-    await connectWithUri(uri);
-  }
-
-  logger.info(
-    `MongoDB connected db=${mongoose.connection.name} host=${mongoose.connection.host} memory=${usedMemoryFallback}`
-  );
-  return { usedMemoryFallback };
-};
-
-const stopMemoryDB = async () => {
-  if (memoryServer) {
-    await mongoose.disconnect();
-    await memoryServer.stop();
-  }
 };
 
 module.exports = connectDB;
-module.exports.stopMemoryDB = stopMemoryDB;
-module.exports.usedMemoryFallback = () => usedMemoryFallback;
+module.exports.stopMemoryDB = async () => {};
+module.exports.usedMemoryFallback = () => false;

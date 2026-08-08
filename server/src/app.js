@@ -56,16 +56,15 @@ app.get('/api/health', (req, res) => {
   const mongoose = require('mongoose');
   const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
   const readyState = mongoose.connection.readyState;
+  const host = mongoose.connection.host || null;
   res.json({
     success: true,
     message: 'Attendance API is running',
     db: states[readyState] || String(readyState),
     dbReadyState: readyState,
     dbName: mongoose.connection.name || null,
-    dbHost: mongoose.connection.host || null,
-    memoryDb: Boolean(
-      mongoose.connection.host && String(mongoose.connection.host).includes('127.0.0.1')
-    ),
+    dbHost: host,
+    isAtlas: Boolean(host && String(host).includes('mongodb.net')),
   });
 });
 
