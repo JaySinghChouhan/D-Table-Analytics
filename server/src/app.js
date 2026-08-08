@@ -15,14 +15,27 @@ app.use(
   cors({
     origin: (origin, callback) => {
       const allowed = [
-        process.env.CLIENT_URL,
+        ...String(process.env.CLIENT_URL || '')
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean),
         'http://localhost:5173',
         'http://localhost:5174',
         'http://127.0.0.1:5173',
         'http://127.0.0.1:5174',
-      ].filter(Boolean);
+        'https://d-table-analytics-drog.vercel.app',
+        'https://jaysinghchouhan-d-table-analytics.vercel.app',
+        'https://d-table-analytics.vercel.app',
+      ];
 
-      if (!origin || allowed.includes(origin) || process.env.NODE_ENV !== 'production') {
+      const isVercelPreview = Boolean(origin && /\.vercel\.app$/i.test(origin));
+
+      if (
+        !origin ||
+        allowed.includes(origin) ||
+        isVercelPreview ||
+        process.env.NODE_ENV !== 'production'
+      ) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
