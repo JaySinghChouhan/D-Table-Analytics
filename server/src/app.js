@@ -53,7 +53,15 @@ app.use(
 );
 
 app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'Attendance API is running' });
+  const mongoose = require('mongoose');
+  const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+  const readyState = mongoose.connection.readyState;
+  res.json({
+    success: true,
+    message: 'Attendance API is running',
+    db: states[readyState] || String(readyState),
+    dbReadyState: readyState,
+  });
 });
 
 app.use('/api/auth', authRoutes);
