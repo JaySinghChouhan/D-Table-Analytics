@@ -17,8 +17,8 @@ const cleanMongoUri = (raw) => {
   return plainMatch ? plainMatch[0].replace(/[>\]]+$/, '') : uri;
 };
 
-/** Default DB name matches Compass database: attendance_system */
-const ensureDbName = (uri, dbName = 'attendance_system') => {
+/** Default DB name matches Atlas explorer: test */
+const ensureDbName = (uri, dbName = 'test') => {
   if (!uri || uri === 'memory') return uri;
   try {
     const parsed = new URL(uri);
@@ -38,14 +38,14 @@ const startMemoryMongo = async () => {
   const { MongoMemoryServer } = require('mongodb-memory-server');
   memoryServer = await MongoMemoryServer.create();
   usedMemoryFallback = true;
-  const uri = memoryServer.getUri('attendance_system');
+  const uri = memoryServer.getUri('test');
   logger.warn('Using in-memory MongoDB (data will NOT appear in Atlas)');
   return uri;
 };
 
 const connectDB = async () => {
   let uri = cleanMongoUri(process.env.MONGODB_URI);
-  uri = ensureDbName(uri, 'attendance_system');
+  uri = ensureDbName(uri, 'test');
 
   const allowMemory =
     process.env.USE_MEMORY_DB === 'true' ||
@@ -69,7 +69,7 @@ const connectDB = async () => {
 
   if (!uri) {
     throw new Error(
-      'MONGODB_URI is not set on Render. Example: mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/attendance_system'
+      'MONGODB_URI is not set on Render. Example: mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/test'
     );
   }
 
