@@ -2,10 +2,11 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const User = require('../models/User');
 const asyncHandler = require('../utils/asyncHandler');
+const { jwtSecret, jwtExpiresIn } = require('../config/jwt');
 
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  return jwt.sign({ id }, jwtSecret, {
+    expiresIn: jwtExpiresIn,
   });
 };
 
