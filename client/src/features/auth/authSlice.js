@@ -1,7 +1,18 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-const stored = localStorage.getItem('attendance_auth');
-const parsed = stored ? JSON.parse(stored) : null;
+// Safe localStorage parsing to prevent app crashes on invalid JSON
+const getInitialAuth = () => {
+  try {
+    const stored = localStorage.getItem('attendance_auth');
+    return stored ? JSON.parse(stored) : null;
+  } catch (error) {
+    console.error('Failed to parse auth data from localStorage:', error);
+    localStorage.removeItem('attendance_auth');
+    return null;
+  }
+};
+
+const parsed = getInitialAuth();
 
 const initialState = {
   user: parsed?.user || null,
